@@ -15,21 +15,21 @@ export function getAllTimbre() {
   return selectAll()
 }
 
-export async function train(path, lang = 'zh') {
-  path = path.replace(/\\/g, '/') // 将路径中的\替换为/
+export async function train(audioPath, lang = 'zh') {
+  audioPath = audioPath.replace(/\\/g, '/') // 将路径中的\替换为/
   
   // 如果启用了远程服务器，先上传音频文件
-  let remotePath = path;
+  let remotePath = audioPath;
   if (remoteServerConfig.enabled) {
     try {
       log.debug('Start uploading training audio files to the remote server...');
       const uploadResult = await uploadFile(
-        path.join(assetPath.ttsRoot, path), 
+        path.join(assetPath.ttsRoot, audioPath), 
         'tts', 
         'origin_audio'
       );
       remotePath = uploadResult.remotePath;
-      log.debug('Training audio files uploaded successfully:', remotePath);
+      log.debug('Training audio files uploaded successfully.');
     } catch (error) {
       log.error('Failed to upload training audio files:', error);
       throw new Error(`Failed to upload training audio files: ${error.message}`);
@@ -37,7 +37,7 @@ export async function train(path, lang = 'zh') {
   }
   
   const res = await preprocessAndTran({
-    format: path.split('.').pop(),
+    format: audioPath.split('.').pop(),
     reference_audio: remotePath,
     lang
   })
@@ -46,7 +46,7 @@ export async function train(path, lang = 'zh') {
     return false
   } else {
     const { asr_format_audio_url, reference_audio_text } = res
-    return insert({ origin_audio_path: path, lang, asr_format_audio_url, reference_audio_text })
+    return insert({ origin_audio_path: audioPath, lang, asr_format_audio_url, reference_audio_text })
   }
 }
 
@@ -120,7 +120,7 @@ export async function makeAudio({voiceId, text, targetDir}) {
  */
 export async function audition(voiceId, text) {
   const tmpDir = require('os').tmpdir()
-  console.log("🚀 ~ audition ~ tmpDir:", tmpDir)
+  console.log("audition ~ tmpDir:", tmpDir)
   const audioPath = await makeAudio({ voiceId, text, targetDir: tmpDir })
   return path.join(tmpDir, audioPath)
 }
