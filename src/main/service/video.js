@@ -286,6 +286,22 @@ async function makeVideoByF2F(audioPath, videoPath) {
       );
       remoteVideoPath = videoResult.remotePath;
       log.debug('Template video file uploaded successfully:', remoteVideoPath);
+      
+      // 将文件复制到容器中的face2face/temp目录
+      log.debug('Copying files to face2face/temp directory in container...');
+      const audioFileResult = await uploadFile(
+        path.join(assetPath.ttsProduct, audioPath), 
+        'face2face', 
+        'temp'
+      );
+      log.debug('Audio file copied to container successfully:', audioFileResult.remotePath);
+      
+      const videoFileResult = await uploadFile(
+        path.join(assetPath.model, videoPath), 
+        'face2face', 
+        'temp'
+      );
+      log.debug('Video file copied to container successfully:', videoFileResult.remotePath);
     } catch (error) {
       log.error('Failed to upload file:', error);
       throw new Error(`Failed to upload file: ${error.message}`);
