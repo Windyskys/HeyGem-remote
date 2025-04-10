@@ -38,7 +38,7 @@ export async function train(audioPath, lang = 'zh') {
   
   const res = await preprocessAndTran({
     format: audioPath.split('.').pop(),
-    reference_audio: remotePath,
+    reference_audio: path.basename(remotePath),
     lang
   })
   log.debug('~ train ~ res:', res)

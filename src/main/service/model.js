@@ -83,6 +83,8 @@ async function addModel(modelName, videoPath) {
     const relativeModelPath = path.relative(assetPath.model, modelPath)
     const relativeAudioPath = path.relative(assetPath.ttsRoot, audioPath)
 
+    // const safeVoiceId = voiceId === false ? null : voiceId;
+
     // insert model info to db
     const id = insert({ modelName, videoPath: relativeModelPath, audioPath: relativeAudioPath, voiceId })
     return id
