@@ -264,7 +264,8 @@ async function makeVideoByF2F(audioPath, videoPath) {
   // 如果启用了远程服务器，先上传文件
   let remoteAudioPath = audioPath;
   let remoteVideoPath = videoPath;
-  
+  log.debug('The audioPath is:', audioPath)
+  log.debug('The videoPath is:', videoPath)
   if (remoteServerConfig.enabled) {
     try {
       // 上传音频文件
