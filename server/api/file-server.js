@@ -7,9 +7,12 @@ const port = process.env.FILE_SERVER_PORT || 3001
 
 // 定义服务类型对应的数据目录映射
 const SERVICE_PATHS = {
-  'tts': '~/heygem_data/voice/data',               // 对应 ~/heygem_data/voice/data:/code/data
-  'face2face': '~/heygem_data/face2face',         // 对应 ~/heygem_data/face2face:/code/data
-  'default': '/code/data'            // 默认保存路径
+  // 'tts': '~/heygem_data/voice/data',               // 对应 ~/heygem_data/voice/data:/code/data
+  // 'face2face': '~/heygem_data/face2face',         // 对应 ~/heygem_data/face2face:/code/data
+  // 'default': '/code/data'            // 默认保存路径
+  'tts': '/code/data',                      // 容器内部路径
+  'face2face': '/code/data/face2face',      // 容器内部路径
+  'default': '/code/data'                   // 默认保存路径
 }
 
 // 配置文件存储
