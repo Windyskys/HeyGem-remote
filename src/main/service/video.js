@@ -292,14 +292,14 @@ async function makeVideoByF2F(audioPath, videoPath) {
       const audioFileResult = await uploadFile(
         path.join(assetPath.ttsProduct, audioPath), 
         'face2face', 
-        'temp'
+        ''
       );
       log.debug('Audio file copied to container successfully:', audioFileResult.remotePath);
       
       const videoFileResult = await uploadFile(
         path.join(assetPath.model, videoPath), 
         'face2face', 
-        'temp'
+        ''
       );
       log.debug('Video file copied to container successfully:', videoFileResult.remotePath);
     } catch (error) {
