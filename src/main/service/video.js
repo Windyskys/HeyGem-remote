@@ -272,7 +272,7 @@ async function makeVideoByF2F(audioPath, videoPath) {
       const audioResult = await uploadFile(
         path.join(assetPath.ttsProduct, audioPath), 
         'tts', 
-        'products'
+        ''
       );
       remoteAudioPath = audioResult.remotePath;
       log.debug('Audio file uploaded successfully:', remoteAudioPath);
@@ -282,7 +282,7 @@ async function makeVideoByF2F(audioPath, videoPath) {
       const videoResult = await uploadFile(
         path.join(assetPath.model, videoPath), 
         'face2face', 
-        'templates'
+        ''
       );
       remoteVideoPath = videoResult.remotePath;
       log.debug('Template video file uploaded successfully:', remoteVideoPath);
