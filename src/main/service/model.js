@@ -74,7 +74,7 @@ async function addModel(modelName, videoPath) {
     const relativeAudioPath = path.relative(assetPath.ttsRoot, audioPath)
     if (process.env.NODE_ENV === 'development') {
       // TODO 写死调试
-      return trainVoice('origin_audio/test.wav', 'zh')
+      return trainVoice(relativeAudioPath, 'zh')
     } else {
       return trainVoice(relativeAudioPath, 'zh')
     }

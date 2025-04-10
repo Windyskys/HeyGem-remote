@@ -122,7 +122,7 @@ export async function synthesisVideo(videoId) {
     let result, param
     if (process.env.NODE_ENV === 'development') {
       // 写死调试
-      ({ result, param } = await makeVideoByF2F('test.wav', 'test.mp4'))
+      ({ result, param } = await makeVideoByF2F(audioPath, model.video_path))
     } else {
       ({ result, param } = await makeVideoByF2F(audioPath, model.video_path))
     }
@@ -187,7 +187,8 @@ export async function loopPending() {
       // ffmpeg 获取视频时长
       let duration
       if(process.env.NODE_ENV === 'development'){
-        duration = 88
+        const resultPath = path.join(assetPath.model, statusRes.data.result)
+        duration = await getVideoDuration(resultPath)
       }else{
         const resultPath = path.join(assetPath.model, statusRes.data.result)
         duration = await getVideoDuration(resultPath)
