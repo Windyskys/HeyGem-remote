@@ -193,11 +193,12 @@ export async function loopPending() {
           const fileName = path.basename(statusRes.data.result);
           localFilePath = path.join(assetPath.model, fileName);
           
-          // 定义可能的远程路径列表（使用 Ubuntu 格式的路径）
+          // 定义可能的远程路径列表（使用正确的容器路径）
           const possiblePaths = [
-            '/code/data/' + fileName,// 容器根路径
-            '/code/data/temp/' + fileName,                    // 容器内路径
-            '~/heygem_data/face2face/temp/' + fileName    // Ubuntu 主目录路径
+            '/code/data/temp/' + fileName,        // 容器中的temp目录（对应服务器的~/heygem_data/face2face/temp）
+            '/code/data/' + fileName,             // 容器根目录
+            '/data/temp/' + fileName,             // 备用路径1
+            '/data/' + fileName                   // 备用路径2
           ];
 
           let downloadSuccess = false;
@@ -206,15 +207,15 @@ export async function loopPending() {
           // 依次尝试不同的路径
           for (const remotePath of possiblePaths) {
             try {
-              remotePath = remotePath.replace(/\\/g, '/');
-              log.debug('Downloading video file from:', remotePath);
-              await downloadFile(remotePath, localFilePath);
-              log.debug('Video file downloaded successfully from:', remotePath);
+              const normalizedPath = remotePath.replace(/\\/g, '/');
+              log.debug('Downloading video file from:', normalizedPath);
+              await downloadFile(normalizedPath, localFilePath);
+              log.debug('Video file downloaded successfully from:', normalizedPath);
               downloadSuccess = true;
               break;
             } catch (error) {
               lastError = error;
-              log.debug(`Failed to download from ${remotePath}, trying next path...`);
+              log.debug(`Failed to download from ${normalizedPath}, trying next path...`);
               continue;
             }
           }
@@ -227,7 +228,6 @@ export async function loopPending() {
           duration = await getVideoDuration(localFilePath);
         } catch (error) {
           log.error('Failed to download video file:', error);
-          // 失败时也更新状态，但标记为失败
           updateStatus(video.id, 'failed', '视频下载失败: ' + error.message);
           return;
         }
