@@ -88,6 +88,52 @@ app.get('/download', (req, res) => {
   }
 })
 
+// 文件复制接口
+app.post('/copy', (req, res) => {
+  try {
+    const { sourcePath, serviceType, targetPath } = req.body
+    
+    if (!sourcePath) {
+      return res.status(400).json({ error: 'Source path not specified' })
+    }
+    
+    // 验证源文件存在
+    if (!fs.existsSync(sourcePath)) {
+      return res.status(404).json({ error: 'Source file does not exist' })
+    }
+    
+    // 根据服务类型选择基础路径
+    const basePath = SERVICE_PATHS[serviceType] || SERVICE_PATHS.default
+    const fullTargetPath = path.join(basePath, targetPath)
+    
+    // 确保目标目录存在
+    if (!fs.existsSync(path.dirname(fullTargetPath))) {
+      fs.mkdirSync(path.dirname(fullTargetPath), { recursive: true })
+    }
+    
+    // 获取文件名
+    const fileName = path.basename(sourcePath)
+    const destPath = path.join(fullTargetPath, fileName)
+    
+    // 执行复制操作
+    fs.copyFileSync(sourcePath, destPath)
+    console.log(`File copied from ${sourcePath} to ${destPath}`)
+    
+    res.json({
+      success: true,
+      sourcePath: sourcePath,
+      targetPath: destPath,
+      message: 'File copied successfully'
+    })
+  } catch (error) {
+    console.error('File copy error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
 app.listen(port, '0.0.0.0', () => {
   console.log(`File server running on port ${port}`)
 }) 

@@ -268,45 +268,45 @@ async function makeVideoByF2F(audioPath, videoPath) {
   log.debug('The videoPath is:', videoPath)
   if (remoteServerConfig.enabled) {
     try {
-      // 上传音频文件
-      log.debug('Start uploading synthesized audio file to remote server...');
-      const audioResult = await uploadFile(
-        path.join(assetPath.ttsProduct, audioPath), 
-        'tts', 
-        ''
-      );
-      remoteAudioPath = audioResult.remotePath;
-      log.debug('Audio file uploaded successfully:', remoteAudioPath);
-      
-      // 上传视频文件
-      log.debug('Start uploading template video file to remote server...');
-      const videoResult = await uploadFile(
-        path.join(assetPath.model, videoPath), 
-        'face2face', 
-        ''
-      );
-      remoteVideoPath = videoResult.remotePath;
-      log.debug('Template video file uploaded successfully:', remoteVideoPath);
-      
-      // 将文件复制到容器中的face2face/temp目录
-      log.debug('Copying files to face2face/temp directory in container...');
-      const audioFileResult = await uploadFile(
-        path.join(assetPath.ttsProduct, audioPath), 
-        'face2face', 
-        ''
-      );
-      log.debug('Audio file copied to container successfully:', audioFileResult.remotePath);
-      
-      const videoFileResult = await uploadFile(
-        path.join(assetPath.model, videoPath), 
-        'face2face', 
-        ''
-      );
-      log.debug('Video file copied to container successfully:', videoFileResult.remotePath);
-    } catch (error) {
-      log.error('Failed to upload file:', error);
-      throw new Error(`Failed to upload file: ${error.message}`);
-    }
+       // 上传音频文件
+       log.debug('Start uploading synthesized audio file to remote server...');
+       const audioResult = await uploadFile(
+         path.join(assetPath.ttsProduct, audioPath), 
+         'face2face', 
+         'temp'
+       );
+       remoteAudioPath = audioResult.remotePath;
+       log.debug('Audio file uploaded successfully:', remoteAudioPath);
+       
+       // 上传视频文件
+       log.debug('Start uploading template video file to remote server...');
+       const videoResult = await uploadFile(
+         path.join(assetPath.model, videoPath), 
+         'face2face', 
+         'temp'
+       );
+       remoteVideoPath = videoResult.remotePath;
+       log.debug('Template video file uploaded successfully:', remoteVideoPath);
+       
+      //  // 将文件复制到容器中的face2face/temp目录
+      //  log.debug('Copying files to face2face/temp directory in container...');
+      //  const audioFileResult = await uploadFile(
+      //    path.join(assetPath.ttsProduct, audioPath), 
+      //    'face2face', 
+      //    'temp'
+      //  );
+      //  log.debug('Audio file copied to container successfully:', audioFileResult.remotePath);
+       
+      //  const videoFileResult = await uploadFile(
+      //    path.join(assetPath.model, videoPath), 
+      //    'face2face', 
+      //    'temp'
+      //  );
+      //  log.debug('Video file copied to container successfully:', videoFileResult.remotePath);
+     } catch (error) {
+       log.error('Failed to upload file:', error);
+       throw new Error(`Failed to upload file: ${error.message}`);
+     }
   }
   
   const param = {

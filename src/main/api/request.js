@@ -85,6 +85,36 @@ async function downloadFile(remoteFilePath, localSavePath) {
   }
 }
 
+// 添加文件复制函数 - 在远程服务器上复制已存在的文件
+async function copyFileOnServer(sourceFilePath, serviceType = 'default', targetPath = '') {
+  if (!remoteServerConfig.enabled) {
+    // 如果未启用远程服务器，则直接返回源文件路径
+    return { sourcePath: sourceFilePath, targetPath: sourceFilePath }
+  }
+  
+  try {
+    // 向服务器发送复制请求
+    const response = await axios({
+      method: 'post',
+      url: `${remoteServerConfig.serverAddress}:3001/copy`,
+      data: {
+        sourcePath: sourceFilePath,
+        serviceType: serviceType,
+        targetPath: targetPath || ''
+      }
+    })
+    
+    log.debug('File copy Success:', response.data)
+    return {
+      sourcePath: sourceFilePath,
+      targetPath: response.data.targetPath // 根据实际返回格式调整
+    }
+  } catch (error) {
+    log.error('File copy failed:', error)
+    throw new Error(`File copy failed: ${error.message}`)
+  }
+}
+
 // 在这里正确导出这两个函数
-export { uploadFile, downloadFile }
+export { uploadFile, downloadFile, copyFileOnServer }
 export default instance

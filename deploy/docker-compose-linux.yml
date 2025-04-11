@@ -67,7 +67,7 @@ services:
     volumes:
       - ../server/api:/app
       - ~/heygem_data/voice/data:/code/data  # 与TTS服务挂载相同的路径
-      - ~/heygem_data/face2face:/code/data/face2face  # 与视频生成服务挂载相同的路径
+      - ~/heygem_data/face2face:/code/data  # 与视频生成服务挂载相同的路径
     ports:
       - '3001:3001'
     environment:
