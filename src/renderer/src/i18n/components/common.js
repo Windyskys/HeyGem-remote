@@ -141,6 +141,9 @@ export const commonZh = {
     save: '保存',
     saveSuccess: '保存成功',
     saveFailed: '保存失败',
+    reset: '重置',
+    resetSuccess: '重置成功',
+    resetFailed: '重置失败',
     tab: {
       userAgreementText: '用户协议',
       openLogText: '日志',
@@ -294,6 +297,9 @@ export const commonEn = {
     save: 'Save',
     saveSuccess: 'Save successful',
     saveFailed: 'Save failed',
+    reset: 'Reset',
+    resetSuccess: 'Reset successful',
+    resetFailed: 'Reset failed',
     tab: {
       userAgreementText: 'User Agreement',
       openLogText: 'Log',

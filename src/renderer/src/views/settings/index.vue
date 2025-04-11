@@ -14,6 +14,7 @@
       </div>
       <div class="form-item">
         <button class="save-btn" @click="saveServerIP">{{ $t('common.setting.save') }}</button>
+        <button class="reset-btn" @click="resetServerIP">{{ $t('common.setting.reset') }}</button>
       </div>
     </div>
   </div>
@@ -52,6 +53,17 @@ const saveServerIP = async () => {
   } catch (error) {
     console.error('保存服务器配置失败:', error)
     alert(t('settings.saveFailed'))
+  }
+}
+
+const resetServerIP = async () => {
+  serverIP.value = '127.0.0.1'
+  try {
+    await window.electron.ipcRenderer.invoke('update-server-config', { serverAddress: 'http://127.0.0.1' })
+    alert(t('settings.resetSuccess'))
+  } catch (error) {
+    console.error('重置服务器配置失败:', error)
+    alert(t('settings.resetFailed'))
   }
 }
 </script>
@@ -114,9 +126,24 @@ const saveServerIP = async () => {
         padding: 10px 20px;
         font-size: 14px;
         cursor: pointer;
+        margin-right: 10px;
         
         &:hover {
           background-color: #3439db;
+        }
+      }
+      
+      .reset-btn {
+        background-color: #f5f5f5;
+        color: #333;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        
+        &:hover {
+          background-color: #e6e6e6;
         }
       }
     }
