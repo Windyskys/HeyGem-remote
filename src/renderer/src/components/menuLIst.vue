@@ -19,6 +19,8 @@ import activeIcon from '../assets/images/home/menu/active.svg'
 import offIcon from '../assets/images/home/menu/offHome.svg'
 import onMediaToolIcon from '../assets/images/home/menu/onMediaTool.svg'
 import offMediaToolIcon from '../assets/images/home/menu/offMediaTool.svg'
+import onSettingsIcon from '../assets/images/home/menu/onSettings.svg'
+import offSettingsIcon from '../assets/images/home/menu/offSettings.svg'
 import { useI18n } from 'vue-i18n'
 const { t, locale } = useI18n()
 const unRoute = useRoute()
@@ -39,6 +41,14 @@ const obj = [
     offIcon: offMediaToolIcon,
     active: false,
     path: '/media-tool'
+  },
+  {
+    key: 'common.menu.settings',
+    name: t('common.menu.settings'),
+    onIcon,
+    offIcon,
+    active: false,
+    path: '/settings'
   }
   /* {
       name: "账号",

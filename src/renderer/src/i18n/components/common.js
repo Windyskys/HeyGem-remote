@@ -8,7 +8,8 @@ import { Button } from 'tdesign-vue-next'
 export const commonZh = {
   menu: {
     text: '首页',
-    mediaTool: '自媒体工具'
+    mediaTool: '自媒体工具',
+    settings: '设置'
   },
   header: {
     minimizeText: '最小化',
@@ -134,8 +135,15 @@ export const commonZh = {
   },
   setting: {
     title: '设置',
+    serverIP: '服务器IP地址',
+    serverIPPlaceholder: '请输入服务器IP地址',
+    serverIPTip: '例如: 192.168.1.100',
+    save: '保存',
+    saveSuccess: '保存成功',
+    saveFailed: '保存失败',
     tab: {
       userAgreementText: '用户协议',
+      openLogText: '日志',
       languageSwitchText: '语言切换'
     },
     languageSwitch: {
@@ -153,7 +161,8 @@ export const commonZh = {
 export const commonEn = {
   menu: {
     text: 'Home',
-    mediaTool: 'Media Tools'
+    mediaTool: 'Media Tools',
+    settings: 'Settings'
   },
   header: {
     minimizeText: 'Minimize',
@@ -278,10 +287,17 @@ export const commonEn = {
     createVideoBtnText: 'Submit'
   },
   setting: {
-    title: 'Setting',
+    title: 'Settings',
+    serverIP: 'Server IP Address',
+    serverIPPlaceholder: 'Enter server IP address',
+    serverIPTip: 'Example: 192.168.1.100',
+    save: 'Save',
+    saveSuccess: 'Save successful',
+    saveFailed: 'Save failed',
     tab: {
       userAgreementText: 'User Agreement',
-      languageSwitchText: 'Language switch'
+      openLogText: 'Log',
+      languageSwitchText: 'Language'
     },
     languageSwitch: {
       languageEnText: 'English',
