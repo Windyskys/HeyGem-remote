@@ -15,7 +15,7 @@ import {
 } from '../dao/video.js'
 import { makeAudio4Video, copyAudio4Video } from './voice.js'
 import { makeVideo as makeVideoApi,getVideoStatus } from '../api/f2f.js'
-import { uploadFile } from '../api/request.js'
+import { uploadFile, downloadFile } from '../api/request.js'
 import log from '../logger.js'
 import { getVideoDuration } from '../util/ffmpeg.js'
 
@@ -184,25 +184,42 @@ export async function loopPending() {
         statusRes.data.progress,
       )
     }else if (statusRes.data.status === 2) { // 合成成功
-      // ffmpeg 获取视频时长
-      let duration
-      if(process.env.NODE_ENV === 'development'){
-        const resultPath = path.join(assetPath.model, statusRes.data.result)
-        duration = await getVideoDuration(resultPath)
-      }else{
-        const resultPath = path.join(assetPath.model, statusRes.data.result)
-        duration = await getVideoDuration(resultPath)
+      let duration = 0;
+      let localFilePath = '';
+      
+      // 从远程服务器下载视频文件
+      if (remoteServerConfig.enabled) {
+        try {
+          const fileName = path.basename(statusRes.data.result);
+          localFilePath = path.join(assetPath.model, fileName);
+          
+          // 下载视频文件到本地
+          await downloadFile(statusRes.data.result, localFilePath);
+          log.debug('Video file downloaded successfully:', localFilePath);
+          
+          // 获取视频时长
+          duration = await getVideoDuration(localFilePath);
+        } catch (error) {
+          log.error('Failed to download video file:', error);
+          // 失败时也更新状态，但标记为失败
+          updateStatus(video.id, 'failed', '视频下载失败: ' + error.message);
+          return;
+        }
+      } else {
+        // 本地模式处理
+        localFilePath = path.join(assetPath.model, statusRes.data.result);
+        duration = await getVideoDuration(localFilePath);
       }
-
+      
+      // 更新数据库
       update({
         id: video.id,
         status: 'success',
         message: statusRes.data.msg,
         progress: statusRes.data.progress,
         file_path: statusRes.data.result,
-        duration
-      })
-
+        duration: duration || 0
+      });
     } else if (statusRes.data.status === 3) {
       updateStatus(video.id, 'failed', statusRes.data.msg)
     }
