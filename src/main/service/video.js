@@ -193,8 +193,11 @@ export async function loopPending() {
           const fileName = path.basename(statusRes.data.result);
           localFilePath = path.join(assetPath.model, fileName);
           
+          // 构建正确的远程文件路径
+          const remoteFilePath = path.join('~/heygem_data/face2face/temp', fileName);
+          
           // 下载视频文件到本地
-          await downloadFile(statusRes.data.result, localFilePath);
+          await downloadFile(remoteFilePath, localFilePath);
           log.debug('Video file downloaded successfully:', localFilePath);
           
           // 获取视频时长
@@ -217,7 +220,7 @@ export async function loopPending() {
         status: 'success',
         message: statusRes.data.msg,
         progress: statusRes.data.progress,
-        file_path: statusRes.data.result,
+        file_path: fileName, // 保存相对路径
         duration: duration || 0
       });
     } else if (statusRes.data.status === 3) {
