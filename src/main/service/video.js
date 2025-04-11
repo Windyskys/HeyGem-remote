@@ -193,12 +193,35 @@ export async function loopPending() {
           const fileName = path.basename(statusRes.data.result);
           localFilePath = path.join(assetPath.model, fileName);
           
-          // 构建正确的远程文件路径
-          const remoteFilePath = path.join('~/heygem_data/face2face/temp', fileName);
-          
-          // 下载视频文件到本地
-          await downloadFile(remoteFilePath, localFilePath);
-          log.debug('Video file downloaded successfully:', localFilePath);
+          // 定义可能的远程路径列表（使用 Ubuntu 格式的路径）
+          const possiblePaths = [
+            '/code/data/' + fileName,// 容器根路径
+            '/code/data/temp/' + fileName,                    // 容器内路径
+            '~/heygem_data/face2face/temp/' + fileName    // Ubuntu 主目录路径
+          ];
+
+          let downloadSuccess = false;
+          let lastError = null;
+
+          // 依次尝试不同的路径
+          for (const remotePath of possiblePaths) {
+            try {
+              remotePath = remotePath.replace(/\\/g, '/');
+              log.debug('Downloading video file from:', remotePath);
+              await downloadFile(remotePath, localFilePath);
+              log.debug('Video file downloaded successfully from:', remotePath);
+              downloadSuccess = true;
+              break;
+            } catch (error) {
+              lastError = error;
+              log.debug(`Failed to download from ${remotePath}, trying next path...`);
+              continue;
+            }
+          }
+
+          if (!downloadSuccess) {
+            throw new Error(`所有下载路径都失败: ${lastError?.message || '未知错误'}`);
+          }
           
           // 获取视频时长
           duration = await getVideoDuration(localFilePath);
@@ -220,7 +243,7 @@ export async function loopPending() {
         status: 'success',
         message: statusRes.data.msg,
         progress: statusRes.data.progress,
-        file_path: fileName, // 保存相对路径
+        file_path: path.basename(statusRes.data.result), // 只保存文件名
         duration: duration || 0
       });
     } else if (statusRes.data.status === 3) {
