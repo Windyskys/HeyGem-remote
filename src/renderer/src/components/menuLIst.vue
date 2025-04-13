@@ -35,14 +35,6 @@ const obj = [
     path: '/home'
   },
   {
-    key: 'common.menu.mediaTool',
-    name: t('common.menu.mediaTool'),
-    onIcon: onMediaToolIcon,
-    offIcon: offMediaToolIcon,
-    active: false,
-    path: '/media-tool'
-  },
-  {
     key: 'common.menu.settings',
     name: t('common.menu.settings'),
     onIcon,
