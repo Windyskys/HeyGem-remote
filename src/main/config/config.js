@@ -15,12 +15,28 @@ export const remoteServerConfig = {
   paths: {
     tts: '/code/data',
     face2face: '/code/data'
+  },
+  // 添加本地服务地址配置
+  localAddress: 'http://127.0.0.1'
+}
+
+// 将静态对象改为函数，动态返回正确的URL
+export function getServiceUrl() {
+  // 根据远程模式决定使用哪个地址
+  const baseUrl = remoteServerConfig.enabled ? 
+    remoteServerConfig.serverAddress : 
+    remoteServerConfig.localAddress;
+    
+  return {
+    face2face: `${baseUrl}/easy`,
+    tts: `${baseUrl}:18180`
   }
 }
 
+// 保持原有的serviceUrl对象向后兼容
 export const serviceUrl = {
-  face2face: isDev ? 'http://192.168.103.103/easy' : 'http://192.168.103.103/easy',
-  tts: isDev ? 'http://192.168.103.103:18180' : 'http://192.168.103.103:18180'
+  get face2face() { return getServiceUrl().face2face },
+  get tts() { return getServiceUrl().tts }
 }
 
 export const assetPath = {

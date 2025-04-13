@@ -63,4 +63,24 @@ export function registerServerConfigHandlers() {
       return { success: false, error: error.message }
     }
   })
+}
+
+// 启动时加载配置
+export function loadConfigOnStartup() {
+  const savedConfig = loadConfigFromFile()
+  Object.assign(remoteServerConfig, savedConfig)
+  console.log('启动时加载配置:', remoteServerConfig)
+  
+  // 如果有serviceUrl相关更新，也更新它
+  if (!savedConfig.enabled) {
+    // 使用本地地址
+    const localAddress = savedConfig.localAddress || 'http://127.0.0.1';
+    
+    // 这里需要导入serviceUrl并更新
+    if (serviceUrl) {
+      serviceUrl.face2face = `${localAddress}/easy`;
+      serviceUrl.tts = `${localAddress}:18180`;
+      console.log('已更新serviceUrl为本地地址:', serviceUrl);
+    }
+  }
 } 

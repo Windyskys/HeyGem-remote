@@ -6,8 +6,14 @@ import { initDB } from './db/index.js'
 import { registerHandler } from './service/index.js'
 import { init as initInterval } from './interval/interval.js'
 import { registerWebHandles } from './handlers'
+import { loadConfigOnStartup } from './service/server-config.js'
+
+// 初始化数据库
 initDB()
+// 初始化定时任务
 initInterval()
+// 加载服务器配置
+loadConfigOnStartup()
 
 function createWindow() {
   // Create the browser window.
