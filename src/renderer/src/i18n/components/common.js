@@ -135,6 +135,7 @@ export const commonZh = {
   },
   setting: {
     title: '设置',
+    enableRemoteServer: '启用远程服务器',
     serverIP: '服务器IP地址',
     serverIPPlaceholder: '请输入服务器IP地址',
     serverIPTip: '例如: 192.168.1.100',
@@ -291,6 +292,7 @@ export const commonEn = {
   },
   setting: {
     title: 'Settings',
+    enableRemoteServer: 'Enable Remote Server',
     serverIP: 'Server IP Address',
     serverIPPlaceholder: 'Enter server IP address',
     serverIPTip: 'Example: 192.168.1.100',

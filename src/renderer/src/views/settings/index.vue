@@ -3,18 +3,26 @@
     <h1>{{ $t('common.setting.title') }}</h1>
     <div class="settings-form">
       <div class="form-item">
+        <div class="label">{{ $t('common.setting.enableRemoteServer') }}</div>
+        <div class="switch-container">
+          <t-switch v-model="remoteEnabled" @change="toggleRemoteServer" />
+        </div>
+      </div>
+      <div class="form-item">
         <div class="label">{{ $t('common.setting.serverIP') }}</div>
         <input 
           type="text" 
           v-model="serverIP" 
           :placeholder="$t('common.setting.serverIPPlaceholder')"
           @change="saveServerIP"
+          :disabled="!remoteEnabled"
+          :class="{'disabled-input': !remoteEnabled}"
         />
         <div class="tip">{{ $t('common.setting.serverIPTip') }}</div>
       </div>
       <div class="form-item">
-        <button class="save-btn" @click="saveServerIP">{{ $t('common.setting.save') }}</button>
-        <button class="reset-btn" @click="resetServerIP">{{ $t('common.setting.reset') }}</button>
+        <button class="save-btn" @click="saveServerIP" :disabled="!remoteEnabled">{{ $t('common.setting.save') }}</button>
+        <button class="reset-btn" @click="resetServerIP" :disabled="!remoteEnabled">{{ $t('common.setting.reset') }}</button>
       </div>
     </div>
   </div>
@@ -26,21 +34,49 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const serverIP = ref('')
+const remoteEnabled = ref(true)
 
 onMounted(async () => {
-  // 获取当前的服务器IP设置
+  // 获取当前的服务器配置
   try {
     const config = await window.electron.ipcRenderer.invoke('get-server-config')
-    if (config && config.serverAddress) {
-      // 移除http://前缀
-      serverIP.value = config.serverAddress.replace(/^https?:\/\//, '')
+    if (config) {
+      // 设置远程服务器启用状态
+      remoteEnabled.value = config.enabled !== false
+      
+      // 设置服务器地址
+      if (config.serverAddress) {
+        // 移除http://前缀
+        serverIP.value = config.serverAddress.replace(/^https?:\/\//, '')
+      }
     }
   } catch (error) {
     console.error('获取服务器配置失败:', error)
   }
 })
 
+const toggleRemoteServer = async () => {
+  try {
+    await window.electron.ipcRenderer.invoke('update-server-config', { 
+      enabled: remoteEnabled.value 
+    })
+    
+    // 如果关闭远程服务，则恢复使用本地地址
+    if (!remoteEnabled.value) {
+      serverIP.value = '127.0.0.1'
+      await window.electron.ipcRenderer.invoke('update-server-config', { 
+        serverAddress: 'http://127.0.0.1' 
+      })
+    }
+  } catch (error) {
+    console.error('更新远程服务器状态失败:', error)
+  }
+}
+
 const saveServerIP = async () => {
+  // 如果远程服务未启用，不执行保存
+  if (!remoteEnabled.value) return
+  
   try {
     // 确保服务器地址包含http://前缀
     let address = serverIP.value.trim()
@@ -49,21 +85,24 @@ const saveServerIP = async () => {
     }
     
     await window.electron.ipcRenderer.invoke('update-server-config', { serverAddress: address })
-    alert(t('settings.saveSuccess'))
+    alert(t('common.setting.saveSuccess'))
   } catch (error) {
     console.error('保存服务器配置失败:', error)
-    alert(t('settings.saveFailed'))
+    alert(t('common.setting.saveFailed'))
   }
 }
 
 const resetServerIP = async () => {
+  // 如果远程服务未启用，不执行重置
+  if (!remoteEnabled.value) return
+  
   serverIP.value = '127.0.0.1'
   try {
     await window.electron.ipcRenderer.invoke('update-server-config', { serverAddress: 'http://127.0.0.1' })
-    alert(t('settings.resetSuccess'))
+    alert(t('common.setting.resetSuccess'))
   } catch (error) {
     console.error('重置服务器配置失败:', error)
-    alert(t('settings.resetFailed'))
+    alert(t('common.setting.resetFailed'))
   }
 }
 </script>
@@ -97,6 +136,10 @@ const resetServerIP = async () => {
         color: #000000;
       }
       
+      .switch-container {
+        margin-bottom: 10px;
+      }
+      
       input {
         width: 100%;
         height: 40px;
@@ -109,6 +152,12 @@ const resetServerIP = async () => {
         &:focus {
           border-color: #434AF9;
           outline: none;
+        }
+        
+        &.disabled-input {
+          background-color: #f5f5f5;
+          color: #999;
+          cursor: not-allowed;
         }
       }
       
@@ -131,6 +180,11 @@ const resetServerIP = async () => {
         &:hover {
           background-color: #3439db;
         }
+        
+        &:disabled {
+          background-color: #a0a0a0;
+          cursor: not-allowed;
+        }
       }
       
       .reset-btn {
@@ -144,6 +198,12 @@ const resetServerIP = async () => {
         
         &:hover {
           background-color: #e6e6e6;
+        }
+        
+        &:disabled {
+          background-color: #f5f5f5;
+          color: #a0a0a0;
+          cursor: not-allowed;
         }
       }
     }
