@@ -58,3 +58,21 @@ services:
     command: python /code/app_local.py
     networks:
       - ai_network
+  # 文件服务器
+  heygem-file-server:
+    image: node:18-alpine
+    container_name: heygem-file-server
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./server/api:/app
+      - d:/heygem_data/voice/data:/code/data
+      - d:/heygem_data/face2face:/code/data
+      - d:/heygem_data/face2face/temp:/code/data/temp
+    ports:
+      - '3001:3001'
+    environment:
+      - FILE_SERVER_PORT=3001
+    command: sh -c "npm install express multer && node file-server.js"
+    networks:
+      - ai_network
