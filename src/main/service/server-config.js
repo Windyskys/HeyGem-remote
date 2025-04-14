@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { remoteServerConfig } from '../config/config.js'
+import { remoteServerConfig, serviceUrl } from '../config/config.js'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -33,7 +33,7 @@ function loadConfigFromFile() {
     const config = JSON.parse(fs.readFileSync(configFilePath, 'utf8'))
     return config
   } catch (error) {
-    console.error('读取配置文件失败:', error)
+    console.error('Failed to read server config:', error)
     return remoteServerConfig
   }
 }
@@ -59,7 +59,7 @@ export function registerServerConfigHandlers() {
       
       return { success: true }
     } catch (error) {
-      console.error('更新服务器配置失败:', error)
+      console.error('Failed to update server config:', error)
       return { success: false, error: error.message }
     }
   })
@@ -69,7 +69,7 @@ export function registerServerConfigHandlers() {
 export function loadConfigOnStartup() {
   const savedConfig = loadConfigFromFile()
   Object.assign(remoteServerConfig, savedConfig)
-  console.log('启动时加载配置:', remoteServerConfig)
+  console.log('Load config on startup:', remoteServerConfig)
   
   // 如果有serviceUrl相关更新，也更新它
   if (!savedConfig.enabled) {
@@ -77,10 +77,9 @@ export function loadConfigOnStartup() {
     const localAddress = savedConfig.localAddress || 'http://127.0.0.1';
     
     // 这里需要导入serviceUrl并更新
-    if (serviceUrl) {
-      serviceUrl.face2face = `${localAddress}/easy`;
-      serviceUrl.tts = `${localAddress}:18180`;
-      console.log('已更新serviceUrl为本地地址:', serviceUrl);
-    }
+     // 更新remoteServerConfig的localAddress，而不是直接设置serviceUrl
+     remoteServerConfig.localAddress = localAddress;
+     console.log('Updated remoteServerConfig to local address:', remoteServerConfig);
+   
   }
 } 

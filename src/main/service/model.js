@@ -80,10 +80,12 @@ async function addModel(modelName, videoPath) {
     }
   }).then((voiceId)=>{
     // 插入模特信息
-    const relativeModelPath = path.relative(assetPath.model, modelPath)
-    const relativeAudioPath = path.relative(assetPath.ttsRoot, audioPath)
-
-    // const safeVoiceId = voiceId === false ? null : voiceId;
+    let relativeModelPath = path.relative(assetPath.model, modelPath)
+    let relativeAudioPath = path.relative(assetPath.ttsRoot, audioPath)
+    
+    // 将反斜杠替换为正斜杠，保证路径跨平台兼容性
+    relativeModelPath = relativeModelPath.replace(/\\/g, '/')
+    relativeAudioPath = relativeAudioPath.replace(/\\/g, '/')
 
     // insert model info to db
     const id = insert({ modelName, videoPath: relativeModelPath, audioPath: relativeAudioPath, voiceId })
