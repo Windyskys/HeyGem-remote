@@ -35,6 +35,14 @@ const obj = [
     path: '/home'
   },
   {
+    key: 'common.menu.chat',
+    name: t('common.menu.chat'),
+    onIcon,
+    offIcon,
+    active: false,
+    path: '/chat'
+  },
+  {
     key: 'common.menu.settings',
     name: t('common.menu.settings'),
     onIcon,

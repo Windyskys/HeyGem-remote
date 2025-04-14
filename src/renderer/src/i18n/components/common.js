@@ -9,7 +9,8 @@ export const commonZh = {
   menu: {
     text: '首页',
     mediaTool: '自媒体工具',
-    settings: '设置'
+    settings: '设置',
+    chat: '对话'
   },
   header: {
     minimizeText: '最小化',
@@ -158,6 +159,12 @@ export const commonZh = {
   mediaTools: {
     title: '自媒体对标工具',
     description: '这里将提供对抖音、小红书等平台的内容分析工具'
+  },
+  chat: {
+    title: '对话',
+    placeholder: '请输入您的消息...',
+    send: '发送',
+    emptyText: '暂无对话内容'
   }
 }
 
@@ -166,7 +173,8 @@ export const commonEn = {
   menu: {
     text: 'Home',
     mediaTool: 'Media Tools',
-    settings: 'Settings'
+    settings: 'Settings',
+    chat: 'Chat'
   },
   header: {
     minimizeText: 'Minimize',
@@ -315,5 +323,11 @@ export const commonEn = {
   mediaTools: {
     title: 'Media Benchmarking Tools',
     description: 'Tools for analyzing content on platforms like TikTok and Xiaohongshu'
+  },
+  chat: {
+    title: 'Chat',
+    placeholder: 'Type your message...',
+    send: 'Send',
+    emptyText: 'No chat content yet'
   }
 }

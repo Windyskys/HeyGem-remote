@@ -4,6 +4,7 @@ import account from '@renderer/views/account/index.vue'
 import VideoEditView from '@renderer/views/video-edit/VideoEditView.vue'
 import mediaTool from '@renderer/views/media-tool/index.vue'
 import settings from '@renderer/views/settings/index.vue'
+import chat from '@renderer/views/chat/index.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -37,6 +38,11 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: settings
+    },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: chat
     }
   ]
 })
