@@ -37,9 +37,7 @@ export async function train(audioPath, lang = 'zh') {
   }
   
   // 修改这里 - 确保reference_audio路径包含origin_audio子目录
-  const referenceAudio = remoteServerConfig.enabled 
-    ? path.join('origin_audio', path.basename(remotePath)).replace(/\\/g, '/')
-    : path.join('origin_audio', path.basename(audioPath)).replace(/\\/g, '/');
+  const referenceAudio = path.join('origin_audio', path.basename(remotePath)).replace(/\\/g, '/');
   
   const res = await preprocessAndTran({
     format: audioPath.split('.').pop(),
