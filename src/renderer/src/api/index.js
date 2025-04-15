@@ -1,5 +1,3 @@
-
-
 export function videoPage({ page = 1, pageSize = 1, name = '' }) {
   return window.electron.ipcRenderer.invoke('video/page', { page, pageSize, name })
 }
@@ -63,4 +61,34 @@ export function saveContext(key, val) {
 
 export function audition(voiceId, text) {
   return window.electron.ipcRenderer.invoke('voice/audition', voiceId, text)
+}
+
+// 发送消息给AI
+export function sendChatMessage(sessionId, message, persona) {
+  return window.electron.ipcRenderer.invoke('chat/sendMessage', sessionId, message, persona)
+}
+
+// 获取聊天历史记录
+export function getChatHistory(sessionId) {
+  return window.electron.ipcRenderer.invoke('chat/getHistory', sessionId)
+}
+
+// 清除聊天历史
+export function clearChatHistory(sessionId) {
+  return window.electron.ipcRenderer.invoke('chat/clearHistory', sessionId)
+}
+
+// 文本转语音（聊天专用）
+export function chatTextToSpeech(voiceId, text) {
+  return window.electron.ipcRenderer.invoke('chat/textToSpeech', voiceId, text)
+}
+
+// 开始录音
+export function startRecording() {
+  return window.electron.ipcRenderer.invoke('chat/startRecording')
+}
+
+// 停止录音并获取文本
+export function stopRecording(recordingPath) {
+  return window.electron.ipcRenderer.invoke('chat/stopRecording', recordingPath)
 }
