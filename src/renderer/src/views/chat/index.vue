@@ -96,7 +96,7 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { modelPage, audition } from '@renderer/api'
+import { modelPage, audition, sendChatMessage, startRecording, stopRecording, chatTextToSpeech } from '@renderer/api'
 
 const { t } = useI18n()
 const messageInput = ref('')
@@ -111,6 +111,8 @@ const selectedSpeaker = ref(null)
 const playingId = ref('')
 const currentPlayingIndex = ref(-1)
 const audio = new Audio()
+const sessionId = ref(Date.now().toString()) // 生成唯一会话ID
+const recordingPath = ref('') // 保存录音文件路径
 
 // 模拟图标路径
 const playIcon = ref('')
@@ -139,9 +141,9 @@ const sendMessage = async () => {
     await nextTick()
     scrollToBottom()
     
-    // 模拟AI响应
-    setTimeout(async () => {
-      const responseText = `${t('common.chat.responsePrefix')} "${userInput}"。${t('common.chat.personaPrefix')}:${persona.value || t('common.chat.defaultPersona')}`
+    try {
+      // 发送消息给deepseek获取回复
+      const responseText = await sendChatMessage(sessionId.value, userInput, persona.value)
       
       // 添加AI回复
       messages.value.push({
@@ -156,7 +158,17 @@ const sendMessage = async () => {
       if (selectedSpeaker.value) {
         playResponseAudio(messages.value.length - 1, responseText)
       }
-    }, 1000)
+    } catch (error) {
+      console.error('发送消息失败:', error)
+      // 显示错误消息
+      messages.value.push({
+        role: 'assistant',
+        content: `错误: ${error.message || '消息发送失败'}`
+      })
+      
+      await nextTick()
+      scrollToBottom()
+    }
   }
 }
 
@@ -166,21 +178,30 @@ const scrollToBottom = () => {
   }
 }
 
-const toggleRecording = () => {
+const toggleRecording = async () => {
   isRecording.value = !isRecording.value
   
   if (isRecording.value) {
-    // 开始录音的逻辑
-    // window.electron.ipcRenderer.invoke('voice/startRecording')
+    try {
+      // 开始录音
+      recordingPath.value = await startRecording()
+    } catch (error) {
+      console.error('开始录音失败:', error)
+      isRecording.value = false
+    }
   } else {
-    // 停止录音并处理语音转文字的逻辑
-    // const text = await window.electron.ipcRenderer.invoke('voice/stopRecording')
-    // messageInput.value = text
-    
-    // 模拟语音识别结果
-    setTimeout(() => {
-      messageInput.value = t('common.chat.speechRecognitionResult')
-    }, 1000)
+    try {
+      // 停止录音并处理语音转文字
+      const text = await stopRecording(recordingPath.value)
+      if (text) {
+        messageInput.value = text
+        // 自动发送识别的文本
+        await sendMessage()
+      }
+    } catch (error) {
+      console.error('语音识别失败:', error)
+      messageInput.value = ''
+    }
   }
 }
 
@@ -233,7 +254,7 @@ const playResponseAudio = async (messageIndex, text) => {
   
   try {
     // 调用文本转语音API
-    const audioUrl = await audition(selectedSpeaker.value.id, text)
+    const audioUrl = await chatTextToSpeech(selectedSpeaker.value.id, text)
     currentPlayingIndex.value = messageIndex
     
     audio.src = audioUrl
@@ -392,13 +413,15 @@ const playResponseAudio = async (messageIndex, text) => {
         align-items: flex-end;
         
         .voice-btn {
-          height: 50px;
+          height: 40px;
+          min-width: 100px;
           background-color: #434AF9;
           color: #fff;
           border: none;
           border-radius: 4px;
           padding: 0 15px;
           cursor: pointer;
+          font-size: 14px;
           
           &.recording {
             background-color: #f44336;
@@ -408,6 +431,7 @@ const playResponseAudio = async (messageIndex, text) => {
           .btn-content {
             display: flex;
             align-items: center;
+            justify-content: center;
             
             .mic-icon {
               margin-right: 8px;
@@ -415,7 +439,7 @@ const playResponseAudio = async (messageIndex, text) => {
           }
           
           &:hover {
-            background-color: #3439db;
+            background-color: #5f64fd;
           }
         }
       }
@@ -423,7 +447,7 @@ const playResponseAudio = async (messageIndex, text) => {
     
     .chat-input-area {
       display: flex;
-      height: 50px;
+      height: 40px;
       
       input {
         flex: 1;
@@ -452,7 +476,7 @@ const playResponseAudio = async (messageIndex, text) => {
         margin-left: 10px;
         
         &:hover {
-          background-color: #3439db;
+          background-color: #5f64fd;
         }
       }
     }
