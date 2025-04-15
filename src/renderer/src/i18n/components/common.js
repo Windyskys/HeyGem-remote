@@ -154,7 +154,12 @@ export const commonZh = {
     languageSwitch: {
       languageEnText: '英文',
       languageZhText: '中文'
-    }
+    },
+    deepseekApiKey: 'Deepseek API Key',
+    deepseekApiKeyPlaceholder: '请输入您的 Deepseek API Key',
+    deepseekApiKeyTip: '用于语音对话功能，请在 Deepseek 官网获取',
+    saveApiKeySuccess: 'API Key 保存成功',
+    saveApiKeyFailed: 'API Key 保存失败',
   },
   mediaTools: {
     title: '自媒体对标工具',
@@ -164,7 +169,22 @@ export const commonZh = {
     title: '对话',
     placeholder: '请输入您的消息...',
     send: '发送',
-    emptyText: '暂无对话内容'
+    emptyText: '暂无对话内容',
+    persona: '人设',
+    personaPlaceholder: '请输入人设描述，AI会根据您的描述调整回复风格...',
+    speaker: '音色',
+    selectSpeaker: '选择音色',
+    myVoice: '我的音色',
+    searchSpeaker: '搜索音色',
+    startRecording: '开始录音',
+    stopRecording: '停止录音',
+    responsePrefix: '这是对',
+    personaPrefix: '人设',
+    defaultPersona: '默认人设',
+    speechRecognitionResult: '这是语音识别的结果',
+    speakerSearchFailed: '查询音色列表失败',
+    audioPathNotFound: '未找到{name}的音频链接',
+    synthesisAudioFailed: '播放合成语音失败'
   }
 }
 
@@ -318,7 +338,12 @@ export const commonEn = {
     languageSwitch: {
       languageEnText: 'English',
       languageZhText: 'Chinese'
-    }
+    },
+    deepseekApiKey: 'Deepseek API Key',
+    deepseekApiKeyPlaceholder: 'Enter your Deepseek API Key',
+    deepseekApiKeyTip: 'Used for voice chat feature, get it from Deepseek website',
+    saveApiKeySuccess: 'API Key saved successfully',
+    saveApiKeyFailed: 'Failed to save API Key',
   },
   mediaTools: {
     title: 'Media Benchmarking Tools',
@@ -328,6 +353,21 @@ export const commonEn = {
     title: 'Chat',
     placeholder: 'Type your message...',
     send: 'Send',
-    emptyText: 'No chat content yet'
+    emptyText: 'No chat content yet',
+    persona: 'Persona',
+    personaPlaceholder: 'Enter persona description, AI will adjust response style based on your description...',
+    speaker: 'Voice',
+    selectSpeaker: 'Select voice',
+    myVoice: 'My Voices',
+    searchSpeaker: 'Search voices',
+    startRecording: 'Start Recording',
+    stopRecording: 'Stop Recording',
+    responsePrefix: 'This is a response to',
+    personaPrefix: 'Persona',
+    defaultPersona: 'Default persona',
+    speechRecognitionResult: 'This is the speech recognition result',
+    speakerSearchFailed: 'Failed to query voice list',
+    audioPathNotFound: 'Audio link for {name} not found',
+    synthesisAudioFailed: 'Failed to play synthesized audio'
   }
 }

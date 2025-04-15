@@ -17,7 +17,9 @@ export const remoteServerConfig = {
     face2face: '/code/data'
   },
   // 添加本地服务地址配置
-  localAddress: 'http://127.0.0.1'
+  localAddress: 'http://127.0.0.1',
+  // 添加 Deepseek API Key 配置
+  deepseekApiKey: ''
 }
 
 // 将静态对象改为函数，动态返回正确的URL

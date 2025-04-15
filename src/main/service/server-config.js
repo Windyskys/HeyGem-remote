@@ -69,17 +69,21 @@ export function registerServerConfigHandlers() {
 export function loadConfigOnStartup() {
   const savedConfig = loadConfigFromFile()
   Object.assign(remoteServerConfig, savedConfig)
-  console.log('Load config on startup:', remoteServerConfig)
+  console.log('Load config on startup:', {
+    ...remoteServerConfig,
+    deepseekApiKey: remoteServerConfig.deepseekApiKey ? '******' : '' // 日志中隐藏实际的 API Key
+  })
   
   // 如果有serviceUrl相关更新，也更新它
   if (!savedConfig.enabled) {
     // 使用本地地址
     const localAddress = savedConfig.localAddress || 'http://127.0.0.1';
     
-    // 这里需要导入serviceUrl并更新
-     // 更新remoteServerConfig的localAddress，而不是直接设置serviceUrl
-     remoteServerConfig.localAddress = localAddress;
-     console.log('Updated remoteServerConfig to local address:', remoteServerConfig);
-   
+    // 更新remoteServerConfig的localAddress
+    remoteServerConfig.localAddress = localAddress;
+    console.log('Updated remoteServerConfig to local address:', {
+      ...remoteServerConfig,
+      deepseekApiKey: remoteServerConfig.deepseekApiKey ? '******' : '' // 日志中隐藏实际的 API Key
+    });
   }
 } 
