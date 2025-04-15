@@ -11,6 +11,42 @@
         />
       </div>
       
+      <!-- API错误提示框 -->
+      <div class="api-error-alert" v-if="apiError">
+        <t-alert theme="error" :message="apiErrorMessage" :close="true" @close="apiError = false">
+          <template #icon><t-icon name="error-circle-filled" /></template>
+          <template #operation>
+            <t-button theme="primary" size="small" @click="goToSettings">
+              前往设置
+            </t-button>
+          </template>
+        </t-alert>
+      </div>
+      
+      <!-- API密钥状态 -->
+      <div class="api-key-status" v-if="apiKeyValue">
+        <t-alert theme="success" :message="'当前API密钥: ' + apiKeyValue" :close="true">
+          <template #icon><t-icon name="check-circle-filled" /></template>
+        </t-alert>
+      </div>
+      
+      <!-- 添加全局音频播放状态指示器 -->
+      <div class="audio-status-indicator" v-if="isAudioPlaying">
+        <div class="ai-speaking-icon">
+          <div class="wave-circle"></div>
+          <t-icon name="sound" />
+        </div>
+        <span>AI正在回答...</span>
+      </div>
+      
+      <!-- 语音识别状态指示器 -->
+      <div class="processing-status-indicator" v-if="isProcessing">
+        <div class="processing-icon">
+          <t-loading theme="dots" size="medium" />
+        </div>
+        <span>{{ processingStatus }}</span>
+      </div>
+      
       <div class="chat-messages" ref="messagesContainer">
         <div class="empty-message" v-if="messages.length === 0">
           {{ $t('common.chat.emptyText') }}
@@ -21,7 +57,26 @@
             <div class="audio-wave" :class="{ 'playing': currentPlayingIndex === index }">
               <div v-for="i in 5" :key="i" class="wave-bar"></div>
             </div>
+            <!-- 添加播放/暂停控制按钮 -->
+            <t-button 
+              class="play-btn" 
+              theme="default" 
+              size="small" 
+              shape="circle"
+              @click="currentPlayingIndex === index ? stopAudio() : playMessageAudio(index, message.content)"
+            >
+              <t-icon :name="currentPlayingIndex === index ? 'pause' : 'play'" />
+            </t-button>
           </div>
+        </div>
+        
+        <!-- 语音识别临时结果显示 -->
+        <div v-if="recognizedText" class="message-item user recognition-result">
+          <div class="message-header">
+            <t-icon name="mic" />
+            <span>语音识别结果</span>
+          </div>
+          <div class="message-content">{{ recognizedText }}</div>
         </div>
       </div>
       
@@ -67,27 +122,25 @@
         <div class="voice-buttons">
           <t-button 
             class="voice-btn" 
-            :class="{ 'recording': isRecording }" 
-            @click="toggleRecording"
+            :class="{ 
+              'recording': isRecording,
+              'processing': isProcessing 
+            }" 
+            :disabled="isProcessing"
+            @click="isRecording ? stopMediaRecordingAndProcess() : startMediaRecording()"
           >
             <div class="btn-content">
               <div class="mic-icon">
-                <t-icon name="mic" />
+                <t-icon v-if="isRecording" name="stop" />
+                <t-icon v-else-if="isProcessing" name="refresh" />
+                <t-icon v-else name="mic" />
               </div>
-              <span>{{ isRecording ? $t('common.chat.stopRecording') : $t('common.chat.startRecording') }}</span>
+              <span v-if="isRecording">{{ $t('common.chat.stopRecording') }}</span>
+              <span v-else-if="isProcessing">处理中...</span>
+              <span v-else>{{ $t('common.chat.startRecording') }}</span>
             </div>
           </t-button>
         </div>
-      </div>
-      
-      <div class="chat-input-area">
-        <input 
-          type="text" 
-          v-model="messageInput" 
-          :placeholder="$t('common.chat.placeholder')"
-          @keyup.enter="sendMessage"
-        />
-        <button class="send-btn" @click="sendMessage">{{ $t('common.chat.send') }}</button>
       </div>
     </div>
   </div>
@@ -96,27 +149,37 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { modelPage, audition, sendChatMessage, startRecording, stopRecording, chatTextToSpeech } from '@renderer/api'
+import { useRouter } from 'vue-router'
+import { modelPage, audition, sendChatMessage, startRecording, stopRecording, chatTextToSpeech, getContext, saveContext } from '@renderer/api'
 
 const { t } = useI18n()
-const messageInput = ref('')
+const router = useRouter()
 const messages = ref([])
 const messagesContainer = ref(null)
 const persona = ref('')
 const isRecording = ref(false)
+const isProcessing = ref(false)
+const processingStatus = ref('正在识别语音...')
+const recognizedText = ref('')
 const speakerPopupVisible = ref(false)
 const speakerSearch = ref('')
 const speakerList = ref([])
 const selectedSpeaker = ref(null)
 const playingId = ref('')
 const currentPlayingIndex = ref(-1)
+const isAudioPlaying = ref(false)
+const apiError = ref(false)
+const apiErrorMessage = ref("API密钥错误：请在设置中配置正确的API密钥")
+const apiKeyValue = ref('')
 const audio = new Audio()
 const sessionId = ref(Date.now().toString()) // 生成唯一会话ID
-const recordingPath = ref('') // 保存录音文件路径
 
 // 模拟图标路径
 const playIcon = ref('')
 const pauseIcon = ref('')
+
+const mediaRecorder = ref(null)
+const audioChunks = ref([])
 
 onMounted(() => {
   searchSpeakers()
@@ -124,84 +187,44 @@ onMounted(() => {
   audio.addEventListener('ended', () => {
     stopAudio()
   })
+  
+  audio.addEventListener('play', () => {
+    isAudioPlaying.value = true
+  })
+  
+  audio.addEventListener('pause', () => {
+    isAudioPlaying.value = false
+  })
+  
+  // 加载时检查API密钥
+  checkApiKey()
 })
 
-const sendMessage = async () => {
-  if (messageInput.value.trim()) {
-    // 添加用户消息
-    messages.value.push({
-      role: 'user',
-      content: messageInput.value.trim()
-    })
-    
-    const userInput = messageInput.value.trim()
-    messageInput.value = ''
-    
-    // 滚动到底部
-    await nextTick()
-    scrollToBottom()
-    
-    try {
-      // 发送消息给deepseek获取回复
-      const responseText = await sendChatMessage(sessionId.value, userInput, persona.value)
-      
-      // 添加AI回复
-      messages.value.push({
-        role: 'assistant',
-        content: responseText
-      })
-      
-      await nextTick()
-      scrollToBottom()
-      
-      // 如果选择了音色，则播放合成语音
-      if (selectedSpeaker.value) {
-        playResponseAudio(messages.value.length - 1, responseText)
-      }
-    } catch (error) {
-      console.error('发送消息失败:', error)
-      // 显示错误消息
-      messages.value.push({
-        role: 'assistant',
-        content: `错误: ${error.message || '消息发送失败'}`
-      })
-      
-      await nextTick()
-      scrollToBottom()
+// 检查API密钥
+const checkApiKey = async () => {
+  try {
+    const result = await getContext('deepseekApiKey')
+    if (result && result.val) {
+      apiKeyValue.value = result.val
+    } else {
+      apiError.value = true
+      apiErrorMessage.value = "API密钥未配置：请在设置中配置API密钥"
     }
+  } catch (error) {
+    console.error('获取API密钥失败:', error)
+    apiError.value = true
+    apiErrorMessage.value = "获取API密钥失败：" + error.message
   }
+}
+
+// 跳转到设置页面
+const goToSettings = () => {
+  router.push('/settings')
 }
 
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
-}
-
-const toggleRecording = async () => {
-  isRecording.value = !isRecording.value
-  
-  if (isRecording.value) {
-    try {
-      // 开始录音
-      recordingPath.value = await startRecording()
-    } catch (error) {
-      console.error('开始录音失败:', error)
-      isRecording.value = false
-    }
-  } else {
-    try {
-      // 停止录音并处理语音转文字
-      const text = await stopRecording(recordingPath.value)
-      if (text) {
-        messageInput.value = text
-        // 自动发送识别的文本
-        await sendMessage()
-      }
-    } catch (error) {
-      console.error('语音识别失败:', error)
-      messageInput.value = ''
-    }
   }
 }
 
@@ -229,6 +252,7 @@ const stopAudio = () => {
   audio.currentTime = 0
   playingId.value = ''
   currentPlayingIndex.value = -1
+  isAudioPlaying.value = false
 }
 
 const playAudio = (speaker) => {
@@ -249,6 +273,17 @@ const handlePlay = (speaker) => {
   }
 }
 
+const playMessageAudio = async (messageIndex, text) => {
+  if (!selectedSpeaker.value) return
+  
+  // 如果当前正在播放，先停止
+  if (currentPlayingIndex.value !== -1) {
+    stopAudio()
+  }
+  
+  await playResponseAudio(messageIndex, text)
+}
+
 const playResponseAudio = async (messageIndex, text) => {
   if (!selectedSpeaker.value) return
   
@@ -260,11 +295,150 @@ const playResponseAudio = async (messageIndex, text) => {
     audio.src = audioUrl
     audio.onended = () => {
       currentPlayingIndex.value = -1
+      isAudioPlaying.value = false
     }
     audio.play()
+    isAudioPlaying.value = true
   } catch (error) {
     console.error(t('common.chat.synthesisAudioFailed'), error)
     currentPlayingIndex.value = -1
+    isAudioPlaying.value = false
+  }
+}
+
+async function startMediaRecording() {
+  try {
+    // 清除之前的识别结果
+    recognizedText.value = ''
+    
+    // 获取媒体流
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    
+    // 创建MediaRecorder实例
+    mediaRecorder.value = new MediaRecorder(stream)
+    audioChunks.value = []
+    
+    // 收集录音数据
+    mediaRecorder.value.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.value.push(event.data)
+      }
+    }
+    
+    // 开始录音
+    mediaRecorder.value.start()
+    isRecording.value = true
+  } catch (error) {
+    console.error('开始录音失败:', error)
+    isRecording.value = false
+  }
+}
+
+async function stopMediaRecordingAndProcess() {
+  if (mediaRecorder.value && isRecording.value) {
+    // 改变状态为处理中
+    isRecording.value = false
+    isProcessing.value = true
+    processingStatus.value = '正在识别语音...'
+    
+    // 创建一个新的Promise，当录音停止时解析
+    const recordingData = await new Promise(resolve => {
+      mediaRecorder.value.onstop = async () => {
+        // 将录音数据合并为blob
+        const audioBlob = new Blob(audioChunks.value, { type: 'audio/wav' })
+        
+        // 将blob转换为ArrayBuffer
+        const arrayBuffer = await audioBlob.arrayBuffer()
+        resolve(Array.from(new Uint8Array(arrayBuffer)))
+        
+        // 停止所有音轨
+        mediaRecorder.value.stream.getTracks().forEach(track => track.stop())
+      }
+      mediaRecorder.value.stop()
+    })
+    
+    // 通过IPC发送给主进程处理
+    const result = await window.electron.ipcRenderer.invoke('chat/processAudio', recordingData)
+    
+    // 处理识别结果
+    if (result && result.success && result.text) {
+      // 先显示识别结果
+      recognizedText.value = result.text
+      
+      // 滚动到底部
+      await nextTick()
+      scrollToBottom()
+      
+      // 更新处理状态
+      processingStatus.value = '正在发送消息给AI...'
+      
+      // 发送消息给DeepSeek并获取回复
+      try {
+        // 检查是否配置了API密钥
+        if (!apiKeyValue.value) {
+          throw new Error("API密钥未配置，请先在设置中配置API密钥")
+        }
+        
+        // 将识别到的文本添加到消息列表，并清除临时显示
+        messages.value.push({
+          role: 'user',
+          content: result.text
+        })
+        recognizedText.value = ''
+        
+        await nextTick()
+        scrollToBottom()
+        
+        const responseText = await sendChatMessage(sessionId.value, result.text, persona.value)
+        
+        // 添加AI回复
+        messages.value.push({
+          role: 'assistant',
+          content: responseText
+        })
+        
+        await nextTick()
+        scrollToBottom()
+        
+        // 如果选择了音色，则自动播放合成语音
+        if (selectedSpeaker.value) {
+          playResponseAudio(messages.value.length - 1, responseText)
+        }
+      } catch (error) {
+        console.error('发送消息失败:', error)
+        
+        // 检查错误类型
+        if (error.message && error.message.includes('401')) {
+          apiError.value = true
+          apiErrorMessage.value = "API认证失败(401)：API密钥无效或已过期"
+        } else if (error.message && error.message.includes('API key')) {
+          apiError.value = true
+          apiErrorMessage.value = "API密钥错误：" + error.message
+        }
+        
+        // 显示错误消息
+        messages.value.push({
+          role: 'assistant',
+          content: `错误: ${error.message || '消息发送失败'}`
+        })
+        
+        await nextTick()
+        scrollToBottom()
+      }
+    } else {
+      // 语音识别失败
+      messages.value.push({
+        role: 'assistant',
+        content: '语音识别失败，请重试'
+      })
+      
+      await nextTick()
+      scrollToBottom()
+    }
+    
+    // 重置处理状态
+    isProcessing.value = false
+    mediaRecorder.value = null
   }
 }
 </script>
@@ -290,6 +464,11 @@ const playResponseAudio = async (messageIndex, text) => {
     display: flex;
     flex-direction: column;
     height: calc(100% - 60px);
+    position: relative;
+    
+    .api-error-alert, .api-key-status {
+      margin-bottom: 15px;
+    }
     
     .persona-section {
       margin-bottom: 15px;
@@ -314,6 +493,47 @@ const playResponseAudio = async (messageIndex, text) => {
           border-color: #434AF9;
           outline: none;
         }
+      }
+    }
+    
+    .audio-status-indicator, .processing-status-indicator {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      padding: 10px 15px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      font-weight: 500;
+    }
+    
+    .audio-status-indicator {
+      background: rgba(67, 74, 249, 0.9);
+      color: white;
+      
+      .ai-speaking-icon {
+        position: relative;
+        margin-right: 8px;
+        
+        .wave-circle {
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          animation: pulse-wave 1.5s infinite;
+        }
+      }
+    }
+    
+    .processing-status-indicator {
+      background: rgba(255, 152, 0, 0.9);
+      color: white;
+      
+      .processing-icon {
+        margin-right: 8px;
       }
     }
     
@@ -345,15 +565,19 @@ const playResponseAudio = async (messageIndex, text) => {
         &.user {
           background-color: #e1f5fe;
           margin-left: auto;
+          color: #333333;
+          font-weight: 500;
         }
         
         &.assistant {
           background-color: #f5f5f5;
           margin-right: auto;
+          color: #333333;
           
           .audio-controls {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             margin-top: 8px;
             
             .audio-wave {
@@ -381,6 +605,33 @@ const playResponseAudio = async (messageIndex, text) => {
                   &:nth-child(5) { animation-delay: 0.0s; }
                 }
               }
+            }
+            
+            .play-btn {
+              margin-left: 8px;
+              width: 28px;
+              height: 28px;
+              padding: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+        }
+        
+        &.recognition-result {
+          background-color: #fff3e0;
+          border: 1px dashed #ffb74d;
+          
+          .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            color: #f57c00;
+            font-size: 12px;
+            
+            .t-icon {
+              margin-right: 4px;
             }
           }
         }
@@ -428,6 +679,19 @@ const playResponseAudio = async (messageIndex, text) => {
             animation: pulse 1.5s infinite;
           }
           
+          &.processing {
+            background-color: #ff9800;
+            
+            .mic-icon {
+              animation: spin 1.5s infinite linear;
+            }
+          }
+          
+          &:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
+          
           .btn-content {
             display: flex;
             align-items: center;
@@ -438,124 +702,45 @@ const playResponseAudio = async (messageIndex, text) => {
             }
           }
           
-          &:hover {
+          &:hover:not(:disabled) {
             background-color: #5f64fd;
+            
+            &.recording {
+              background-color: #d32f2f;
+            }
+            
+            &.processing {
+              background-color: #f57c00;
+            }
           }
-        }
-      }
-    }
-    
-    .chat-input-area {
-      display: flex;
-      height: 40px;
-      
-      input {
-        flex: 1;
-        height: 100%;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 0 15px;
-        font-size: 14px;
-        color: #000000;
-        
-        &:focus {
-          border-color: #434AF9;
-          outline: none;
-        }
-      }
-      
-      .send-btn {
-        width: 100px;
-        height: 100%;
-        background-color: #434AF9;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        margin-left: 10px;
-        
-        &:hover {
-          background-color: #5f64fd;
         }
       }
     }
   }
 }
 
-.popup-scoped {
-  width: 300px;
-  max-height: 400px;
-  background-color: #1d1e20;
-  border-radius: 8px;
-  overflow: hidden;
-  
+/* 弹出菜单样式修改 */
+:deep(.popup-scoped) {
   .side {
-    padding: 10px 12px;
-    font-size: 14px;
-    color: #ffffff;
-    background-color: #27292D;
+    color: #f0f0f0 !important; /* 修改白色文字为更明显的颜色 */
+    background-color: #2c2e33 !important; /* 加深背景 */
   }
   
-  .list {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    
-    &-search {
-      flex: none;
-      padding: 16px 12px;
+  .list-box__item {
+    .name {
+      color: #f0f0f0 !important; /* 修改白色文字为更明显的颜色 */
+      font-weight: 600 !important;
     }
     
-    &-box {
-      flex: 1;
-      overflow: auto;
-      padding: 0 12px;
-      max-height: 300px;
-      
-      &__item {
-        width: 100%;
-        height: 72px;
-        background: #27292D;
-        margin-bottom: 12px;
-        border-radius: 4px;
-        border: 1px solid transparent;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        
-        &.--active {
-          border: 1px solid #434AF9;
-        }
-        
-        .avatar {
-          flex: none;
-          width: 40px;
-          height: 40px;
-        }
-        
-        .name {
-          font-weight: 500;
-          font-size: 14px;
-          color: #FFFFFF;
-          line-height: 22px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        
-        .btn {
-          flex: none;
-          margin-left: auto;
-          cursor: pointer;
-          width: 28px;
-          height: 28px;
-        }
-      }
+    background: #2c2e33 !important; /* 加深背景 */
+    
+    &.--active {
+      border: 2px solid #5f64fd !important; /* 使选中更明显 */
+      background: #383a40 !important;
     }
   }
+  
+  background-color: #222326 !important; /* 加深整体背景 */
 }
 
 @keyframes sound {
@@ -576,6 +761,30 @@ const playResponseAudio = async (messageIndex, text) => {
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes pulse-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 

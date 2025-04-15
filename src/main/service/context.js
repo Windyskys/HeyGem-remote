@@ -23,3 +23,17 @@ export function init() {
     return saveContext(...args)
   })
 }
+
+// 不要使用顶级await
+// 错误: await saveContext('useLocalSpeechRecognition', true);
+
+// 正确做法：在函数内使用await
+function initializeSettings() {
+  return Promise.all([
+    saveContext('useLocalSpeechRecognition', true),
+    saveContext('whisperModelSize', 'tiny')
+  ]);
+}
+
+// 导出初始化函数供其他模块调用
+export { initializeSettings };

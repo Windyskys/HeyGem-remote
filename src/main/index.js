@@ -7,6 +7,7 @@ import { registerHandler } from './service/index.js'
 import { init as initInterval } from './interval/interval.js'
 import { registerWebHandles } from './handlers'
 import { loadConfigOnStartup } from './service/server-config.js'
+import { init as initChatService } from './service/chat.js'
 
 // 初始化数据库
 initDB()
@@ -28,8 +29,11 @@ function createWindow() {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: false, // 禁用 webSecurity
-      contextIsolation: false, // 禁用上下文隔离
+      webSecurity: true,
+      contextIsolation: true,
+      permissions: {
+        media: true
+      }
     }
   })
   mainWindow.loadFile('index.html');
@@ -71,6 +75,9 @@ app.whenReady().then(() => {
 
   // 注册主进程服务
   registerHandler()
+
+  // 初始化聊天服务
+  initChatService()
 
   const mainWindow = createWindow()
 

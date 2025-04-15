@@ -7,11 +7,16 @@ import { getContext, saveContext } from './context.js'
 import { makeAudio } from './voice.js'
 import { assetPath } from '../config/config.js'
 import axios from 'axios'
+import { recognizeSpeech } from './whisper.js'
+import recorder from 'node-record-lpcm16'
 
 const MODEL_NAME = 'chat'
 
 // 保存聊天历史记录
 const historyMap = new Map()
+
+// 创建录音实例对象的Map
+const recorderMap = new Map()
 
 /**
  * 发送消息给大语言模型并获取回复
@@ -31,16 +36,22 @@ export async function sendMessage(sessionId, message, persona = '') {
     const history = historyMap.get(sessionId)
     history.push({ role: 'user', content: message })
     
-    // 获取API密钥
-    const apiKey = await getContext('deepseekApiKey')
+    // 获取API密钥 - 修改这里的处理逻辑
+    const apiKeyData = await getContext('deepseekApiKey')
+    // 数据库查询返回包含val字段的对象，需要提取实际的密钥值
+    const apiKey = apiKeyData?.val
+    
     if (!apiKey) {
-      log.error('[Chat] No API key found')
-      throw new Error('API key not configured')
+      log.error('[Chat] No API key found or invalid format')
+      throw new Error('API key not configured or invalid')
     }
+    
+    log.debug(`[Chat] Using API key: ${apiKey.substring(0, 4)}...${apiKey.slice(-4)}`) // 仅记录部分密钥用于调试
     
     // 构造请求体
     let requestBody = {
-      messages: [...history]
+      messages: [...history],
+      model: "deepseek-chat" // 添加必要的model参数
     }
     
     // 如果存在人设，添加系统指令
@@ -52,30 +63,46 @@ export async function sendMessage(sessionId, message, persona = '') {
     }
     
     // 调用大语言模型API
-    // 这里使用Deepseek API作为示例，可以根据实际情况替换
-    const response = await axios.post(
-      'https://api.deepseek.com/v1/chat/completions',
-      requestBody,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+    try {
+      const response = await axios.post(
+        'https://api.deepseek.com/chat/completions',
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          }
+        }
+      )
+      
+      // 处理响应
+      const assistantMessage = response.data.choices[0].message.content
+      
+      // 保存到历史记录
+      history.push({ role: 'assistant', content: assistantMessage })
+      
+      // 限制历史记录长度，避免过长
+      if (history.length > 20) {
+        history.splice(0, 2) // 删除最旧的一组对话
+      }
+      
+      return assistantMessage
+    } catch (axiosError) {
+      // 详细记录API错误
+      if (axiosError.response) {
+        log.error(`[Chat] API Error: ${axiosError.response.status} - ${JSON.stringify(axiosError.response.data)}`)
+        
+        // 针对不同状态码提供更具体的错误信息
+        if (axiosError.response.status === 401) {
+          throw new Error('API认证失败(401)：请检查您的DeepSeek API密钥是否有效')
+        } else if (axiosError.response.status === 400) {
+          throw new Error(`API参数错误(400)：${JSON.stringify(axiosError.response.data)}`)
+        } else {
+          throw new Error(`API错误(${axiosError.response.status})：${JSON.stringify(axiosError.response.data)}`)
         }
       }
-    )
-    
-    // 处理响应
-    const assistantMessage = response.data.choices[0].message.content
-    
-    // 保存到历史记录
-    history.push({ role: 'assistant', content: assistantMessage })
-    
-    // 限制历史记录长度，避免过长
-    if (history.length > 20) {
-      history.splice(0, 2) // 删除最旧的一组对话
+      throw axiosError
     }
-    
-    return assistantMessage
   } catch (error) {
     log.error('[Chat] Error sending message:', error)
     throw error
@@ -125,36 +152,32 @@ export async function textToSpeech(voiceId, text) {
 export async function speechToText(audioPath) {
   try {
     log.debug(`[Chat] Converting speech to text from ${audioPath}`)
+    console.log(`[调试] 开始处理音频文件: ${audioPath}`)
     
-    // 获取API密钥
-    const apiKey = await getContext('deepseekApiKey')
-    if (!apiKey) {
-      log.error('[Chat] No API key found for speech recognition')
-      throw new Error('API key not configured')
+    // 检查音频文件是否存在且非空
+    const audioBuffer = fs.readFileSync(audioPath)
+    const audioSize = audioBuffer.length
+    console.log(`[调试] 音频文件大小: ${audioSize} 字节`)
+    
+    // 检查音频文件是否为空
+    if (audioSize === 0) {
+      console.error('[调试] 音频文件为空')
+      throw new Error('Empty audio file')
     }
     
-    // 读取音频文件内容
-    const audioBuffer = fs.readFileSync(audioPath)
-    const audioBase64 = audioBuffer.toString('base64')
+    // 获取Whisper模型大小
+    const modelSize = await getContext('whisperModelSize') || 'tiny'
+    console.log(`[调试] 使用Whisper模型: ${modelSize}`)
     
-    // 调用语音识别API (示例使用API，请根据实际选择的服务替换)
-    const response = await axios.post(
-      'https://api.deepseek.com/v1/audio/transcriptions',
-      {
-        file: audioBase64,
-        model: 'deepseek-audio'
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        }
-      }
-    )
+    // 调用本地Whisper进行识别
+    console.log('[调试] 调用本地Whisper进行识别...')
+    const text = await recognizeSpeech(audioPath, modelSize)
+    console.log('[调试] Whisper识别结果:', text)
     
-    return response.data.text
+    return text
   } catch (error) {
     log.error('[Chat] Error in speech to text:', error)
+    console.error('[调试] 语音识别错误:', error)
     throw error
   }
 }
@@ -165,34 +188,154 @@ export async function speechToText(audioPath) {
  * @returns {Promise<string>} 临时录音文件路径
  */
 export function startRecording(event) {
-  const recordingId = crypto.randomUUID()
-  const tempFilePath = path.join(require('os').tmpdir(), `${recordingId}.wav`)
-  
-  log.debug(`[Chat] Starting recording to ${tempFilePath}`)
-  
-  // 这里需要调用系统录音API
-  // 由于具体实现依赖于平台，这里只是示例框架
-  // 实际实现可能需要使用Node.js录音库或平台特定API
-  
-  // 返回录音ID，用于后续停止录音
-  return tempFilePath
+  try {
+    const recordingId = crypto.randomUUID()
+    const tempFilePath = path.join(require('os').tmpdir(), `${recordingId}.wav`)
+    
+    log.debug(`[Chat] Starting recording to ${tempFilePath}`)
+    
+    // 创建文件写入流
+    const fileStream = fs.createWriteStream(tempFilePath)
+    
+    // 开始录音
+    const recording = recorder.record({
+      sampleRate: 16000,
+      channels: 1,
+      audioType: 'wav'
+    })
+    
+    // 将录音数据写入文件
+    recording.stream().pipe(fileStream)
+    
+    // 保存录音实例
+    recorderMap.set(recordingId, {
+      recording,
+      fileStream,
+      tempFilePath
+    })
+    
+    return recordingId
+  } catch (error) {
+    log.error('[Chat] Error starting recording:', error)
+    throw error
+  }
 }
 
 /**
  * 停止录音并返回识别结果
- * @param {string} recordingPath 录音文件路径
+ * @param {string} recordingId 录音ID
  * @returns {Promise<string>} 识别后的文本
  */
-export async function stopRecording(recordingPath) {
-  log.debug(`[Chat] Stopping recording from ${recordingPath}`)
-  
-  // 停止录音
-  // 同样，这里需要实际的录音停止实现
-  
-  // 将录音文件转换为文本
-  const text = await speechToText(recordingPath)
-  
-  return text
+export async function stopRecording(recordingId) {
+  try {
+    const recordingData = recorderMap.get(recordingId)
+    if (!recordingData) {
+      throw new Error(`No recording found with ID ${recordingId}`)
+    }
+    
+    const { recording, fileStream, tempFilePath } = recordingData
+    
+    // 停止录音
+    recording.stop()
+    
+    // 等待文件写入完成
+    await new Promise(resolve => {
+      fileStream.on('finish', resolve)
+    })
+    
+    // 从Map中移除录音实例
+    recorderMap.delete(recordingId)
+    
+    // 处理音频文件...
+    const text = await speechToText(tempFilePath)
+    return text
+  } catch (error) {
+    log.error('[Chat] Error stopping recording:', error)
+    throw error
+  }
+}
+
+/**
+ * 处理从渲染进程发送的录音数据
+ * @param {Uint8Array} audioData 音频数据
+ * @returns {Promise<Object>} 处理结果
+ */
+export async function processAudio(audioData) {
+  try {
+    log.debug('[Chat] Processing audio data, size: ' + audioData.length + ' bytes')
+    
+    // 创建临时文件路径
+    const tempFilePath = path.join(require('os').tmpdir(), `recording-${crypto.randomUUID()}.wav`)
+    
+    // 将音频数据写入临时文件
+    fs.writeFileSync(tempFilePath, Buffer.from(audioData))
+    log.debug('[Chat] Audio data saved to: ' + tempFilePath)
+    
+    // 调用语音识别函数
+    log.debug('[Chat] Starting speech recognition...')
+    const text = await speechToText(tempFilePath)
+    
+    // 在控制台输出结果用于调试
+    console.log('=========== 语音识别结果 ===========')
+    console.log(text)
+    console.log('===================================')
+    
+    // 在日志中也记录结果
+    log.info('[Chat] Speech recognition result: ' + text)
+    
+    // 可选：删除临时文件
+    fs.unlinkSync(tempFilePath)
+    log.debug('[Chat] Temporary audio file deleted')
+    
+    return { success: true, text }
+  } catch (error) {
+    log.error('[Chat] Error processing audio:', error)
+    console.error('语音识别错误:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * 添加测试API密钥的功能
+ * @param {string} apiKey API密钥
+ * @returns {Promise<Object>} 验证结果
+ */
+export async function testApiKey(apiKey) {
+  try {
+    // 构造最简单的请求体
+    const requestBody = {
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: "Hello" }],
+      max_tokens: 1 // 仅请求极少量token以快速验证
+    }
+    
+    // 调用API验证密钥
+    const response = await axios.post(
+      'https://api.deepseek.com/v1/chat/completions',
+      requestBody,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      }
+    )
+    
+    return { success: true, data: response.data }
+  } catch (error) {
+    log.error('[Chat] API key validation error:', error)
+    let errorMessage = '验证失败'
+    
+    if (error.response) {
+      if (error.response.status === 401) {
+        errorMessage = 'API密钥无效或已过期'
+      } else {
+        errorMessage = `错误(${error.response.status}): ${JSON.stringify(error.response.data)}`
+      }
+    }
+    
+    throw new Error(errorMessage)
+  }
 }
 
 /**
@@ -225,7 +368,19 @@ export function init() {
   })
   
   // 停止录音并返回识别结果
-  ipcMain.handle(MODEL_NAME + '/stopRecording', async (event, recordingPath) => {
-    return stopRecording(recordingPath)
+  ipcMain.handle(MODEL_NAME + '/stopRecording', async (event, recordingId) => {
+    return stopRecording(recordingId)
   })
+  
+  // 添加处理录音数据的IPC处理程序
+  ipcMain.handle(MODEL_NAME + '/processAudio', async (event, audioData) => {
+    return processAudio(audioData)
+  })
+  
+  // 添加测试API密钥的IPC处理程序
+  ipcMain.handle(MODEL_NAME + '/testApiKey', async (event, apiKey) => {
+    return testApiKey(apiKey)
+  })
+  
+  log.info('[Chat] IPC handlers registered successfully')
 }

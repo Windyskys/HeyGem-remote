@@ -23,7 +23,7 @@
       <div class="form-item">
         <div class="label">{{ $t('common.setting.deepseekApiKey') }}</div>
         <input 
-          type="password" 
+          type="text" 
           v-model="deepseekApiKey" 
           :placeholder="$t('common.setting.deepseekApiKeyPlaceholder')"
           @change="saveDeepseekApiKey"
@@ -34,6 +34,18 @@
         <button class="save-btn" @click="saveAll">{{ $t('common.setting.save') }}</button>
         <button class="reset-btn" @click="resetAll">{{ $t('common.setting.reset') }}</button>
       </div>
+    </div>
+    
+    <!-- 显示当前密钥状态 -->
+    <div class="api-key-status" v-if="deepseekApiKey">
+      <t-alert theme="success" :message="'当前API密钥: ' + deepseekApiKey">
+        <template #icon><t-icon name="check-circle-filled" /></template>
+      </t-alert>
+    </div>
+    <div class="api-key-status" v-else>
+      <t-alert theme="warning" message="未设置API密钥，语音对话功能将无法使用">
+        <template #icon><t-icon name="error-circle-filled" /></template>
+      </t-alert>
     </div>
   </div>
 </template>
@@ -111,10 +123,32 @@ const saveServerIP = async () => {
 
 const saveDeepseekApiKey = async () => {
   try {
+    // 去除可能的空白字符
+    const trimmedKey = deepseekApiKey.value.trim()
+    
+    // 验证API密钥格式
+    if (trimmedKey && !trimmedKey.startsWith('sk-')) {
+      MessagePlugin.warning('DeepSeek API密钥通常以sk-开头，请检查密钥格式')
+    }
+    
     await window.electron.ipcRenderer.invoke('update-server-config', { 
-      deepseekApiKey: deepseekApiKey.value 
+      deepseekApiKey: trimmedKey 
     })
+    
+    // 显示保存成功消息
     MessagePlugin.success(t('common.setting.saveApiKeySuccess'))
+    
+    // 测试API密钥是否有效
+    try {
+      // 简单验证请求
+      const testResult = await window.electron.ipcRenderer.invoke('test-api-key', trimmedKey)
+      if (testResult.success) {
+        MessagePlugin.success('API密钥验证成功！')
+      }
+    } catch (testError) {
+      // 验证失败但已保存密钥
+      MessagePlugin.warning('已保存API密钥，但验证失败：' + testError.message)
+    }
   } catch (error) {
     console.error('保存 API Key 失败:', error)
     MessagePlugin.error(t('common.setting.saveApiKeyFailed'))

@@ -3,6 +3,7 @@ import { remoteServerConfig, serviceUrl } from '../config/config.js'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { saveContext } from './context.js'
 
 // 配置文件路径
 const configFilePath = path.join(os.homedir(), '.heygem', 'server-config.json')
@@ -46,7 +47,7 @@ export function registerServerConfigHandlers() {
   })
   
   // 更新服务器配置
-  ipcMain.handle('update-server-config', (_, newConfig) => {
+  ipcMain.handle('update-server-config', async (_, newConfig) => {
     try {
       const currentConfig = loadConfigFromFile()
       const updatedConfig = { ...currentConfig, ...newConfig }
@@ -56,6 +57,11 @@ export function registerServerConfigHandlers() {
       
       // 保存到文件
       saveConfigToFile(updatedConfig)
+      
+      // 如果更新了 deepseekApiKey，同时保存到数据库
+      if (newConfig.deepseekApiKey !== undefined) {
+        await saveContext('deepseekApiKey', newConfig.deepseekApiKey)
+      }
       
       return { success: true }
     } catch (error) {
