@@ -12,55 +12,69 @@ const SERVICE_PATHS = {
   'default': '/code/data'                   // 默认保存路径
 }
 
-// 配置文件存储
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const serviceType = req.body.serviceType || 'default'
-    const targetPath = req.body.targetPath || ''
-    
-    // 根据服务类型选择基础路径
-    const basePath = SERVICE_PATHS[serviceType] || SERVICE_PATHS.default
-    const uploadPath = path.join(basePath, targetPath)
-    
-    console.log(`Saving file to: ${uploadPath} (Service type: ${serviceType})`)
-    
-    // 确保目录存在
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true })
-    }
-    
-    cb(null, uploadPath)
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname)
-  }
-})
+// 先解析普通表单字段
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-const upload = multer({ storage: storage })
+// 创建一个特殊的multer实例，用于处理文件上传
+const fileUpload = multer({ 
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      // 此时req.body应该已经可用
+      const serviceType = req.body.serviceType || 'default'
+      const targetPath = req.body.targetPath || ''
+      
+      // 根据服务类型选择基础路径
+      const basePath = SERVICE_PATHS[serviceType] || SERVICE_PATHS.default
+      const uploadPath = path.join(basePath, targetPath)
+      
+      console.log(`Saving file to: ${uploadPath} (Service type: ${serviceType})`)
+      
+      // 确保目录存在
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true })
+      }
+      
+      cb(null, uploadPath)
+    },
+    filename: function (req, file, cb) {
+      cb(null, file.originalname)
+    }
+  })
+}).single('file');
 
 // 文件上传接口
-app.post('/upload', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' })
+app.post('/upload', (req, res) => {
+  // 手动调用multer中间件，确保body字段已经解析
+  fileUpload(req, res, function(err) {
+    if (err) {
+      // 处理错误
+      return res.status(500).json({ error: err.message })
     }
     
-    const filePath = req.file.path
-    console.log('File uploaded:', filePath)
-    
-    res.json({
-      success: true,
-      filePath: filePath,
-      message: 'File uploaded successfully'
-    })
-  } catch (error) {
-    console.error('File upload error:', error)
-    res.status(500).json({
-      success: false,
-      error: error.message
-    })
-  }
-})
+    // 正常处理请求
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' })
+      }
+      
+      const filePath = req.file.path
+      console.log('File uploaded:', filePath)
+      
+      res.json({
+        success: true,
+        filePath: filePath,
+        message: 'File uploaded successfully'
+      })
+    } catch (error) {
+      console.error('File upload error:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message
+      })
+    }
+  });
+});
 
 // 文件下载接口
 app.get('/download', (req, res) => {
