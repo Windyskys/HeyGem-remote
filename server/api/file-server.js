@@ -27,7 +27,7 @@ const fileUpload = multer({
       // 根据服务类型选择基础路径
       const basePath = SERVICE_PATHS[serviceType] || SERVICE_PATHS.default
       const uploadPath = path.join(basePath, targetPath)
-      
+      console.log(req.body)
       console.log(`Saving file to: ${uploadPath} (Service type: ${serviceType})`)
       
       // 确保目录存在
