@@ -13,7 +13,7 @@ export const remoteServerConfig = {
   fileDownloadPath: '/download',
   // 根据Docker挂载路径设置
   paths: {
-    tts: '/code/data',
+    tts: '/code/data/tts',
     face2face: '/code/data'
   },
   // 添加本地服务地址配置

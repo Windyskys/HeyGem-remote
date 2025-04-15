@@ -29,7 +29,7 @@ export async function train(audioPath, lang = 'zh') {
         'origin_audio'
       );
       remotePath = uploadResult.remotePath;
-      log.debug('Training audio files uploaded successfully.');
+      log.debug('Training audio files uploaded successfully.', uploadResult);
     } catch (error) {
       log.error('Failed to upload training audio files:', error);
       throw new Error(`Failed to upload training audio files: ${error.message}`);
