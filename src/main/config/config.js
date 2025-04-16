@@ -28,7 +28,7 @@ export function getServiceUrl() {
     remoteServerConfig.localAddress;
     
   return {
-    face2face: `${baseUrl}/easy`,
+    face2face: `${baseUrl}:8383/easy`,
     tts: `${baseUrl}:18180`
   }
 }
