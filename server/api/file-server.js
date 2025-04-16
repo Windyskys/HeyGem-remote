@@ -20,14 +20,15 @@ app.use(express.json());
 const fileUpload = multer({ 
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
-      // 此时req.body应该已经可用
-      const serviceType = req.body.serviceType || 'default'
-      const targetPath = req.body.targetPath || ''
+      // 从请求头中获取服务类型和目标路径
+      const serviceType = req.headers['x-service-type'] || 'default'
+      const targetPath = req.headers['x-target-path'] || ''
       
       // 根据服务类型选择基础路径
       const basePath = SERVICE_PATHS[serviceType] || SERVICE_PATHS.default
       const uploadPath = path.join(basePath, targetPath)
-      console.log(req.body)
+      console.log('req body',req.body)
+      console.log(`From header: serviceType=${serviceType}, targetPath=${targetPath}`)
       console.log(`Saving file to: ${uploadPath} (Service type: ${serviceType})`)
       
       // 确保目录存在

@@ -24,17 +24,18 @@ async function uploadFile(filePath, serviceType = 'default', targetPath = '') {
     const fileName = path.basename(filePath)
     const formData = new FormData()
     
+    // 只添加文件到FormData
     formData.append('file', fs.createReadStream(filePath))
-    formData.append('serviceType', serviceType)
-    formData.append('targetPath', targetPath || '')
     
-    // 您可以根据实际API调整请求URL和参数
+    // 发送请求，将参数放在请求头中
     const response = await axios({
       method: 'post',
       url: `${remoteServerConfig.serverAddress}:3001${remoteServerConfig.fileUploadPath}`,
       data: formData,
       headers: {
-        ...formData.getHeaders()
+        ...formData.getHeaders(),
+        'x-service-type': serviceType,
+        'x-target-path': targetPath || ''
       }
     })
     
