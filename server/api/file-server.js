@@ -21,6 +21,7 @@ const fileUpload = multer({
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
       // 从请求头中获取服务类型和目标路径
+      console.log('req header',req.headers)
       const serviceType = req.headers['x-service-type'] || 'default'
       const targetPath = req.headers['x-target-path'] || ''
       
